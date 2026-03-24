@@ -1,82 +1,232 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import PostCard from '@/components/post/PostCard'
-import { MapPin, Link as LinkIcon, Calendar, Mail } from 'lucide-react'
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Card } from "@/components/ui/card"
+import { MapPin, Link as LinkIcon, Calendar, LogOut } from "lucide-react"
+import { apiFetch } from "@/lib/api-client"
+import { supabase } from "@/lib/supabase"
+
+type Profile = {
+  id: string
+  email: string | null
+  username: string
+  first_name: string | null
+  last_name: string | null
+  bio: string | null
+  avatar_url: string | null
+  website: string | null
+  location: string | null
+  follower_count: number
+  following_count: number
+  posts_count: number
+  created_at: string
+}
 
 export default function ProfilePage() {
-  const dummyUser = {
-    username: "alex_dev",
-    name: "Alex Developer",
-    bio: "Frontend Developer | Next.js enthusiast | Building modern web apps 🚀\nPassionate about clean code and great UX.",
-    location: "San Francisco, CA",
-    website: "alexdev.io",
-    joined: "March 2026",
-    followers: 1240,
-    following: 384,
-    avatarUrl: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=500&auto=format&fit=crop"
+  const router = useRouter()
+  const [authEmail, setAuthEmail] = useState<string | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+
+  const [first_name, setFirstName] = useState("")
+  const [last_name, setLastName] = useState("")
+  const [bio, setBio] = useState("")
+  const [website, setWebsite] = useState("")
+  const [location, setLocation] = useState("")
+  const [avatar_url, setAvatarUrl] = useState("")
+
+  const hydrate = useCallback((p: Profile) => {
+    setProfile(p)
+    setFirstName(p.first_name ?? "")
+    setLastName(p.last_name ?? "")
+    setBio(p.bio ?? "")
+    setWebsite(p.website ?? "")
+    setLocation(p.location ?? "")
+    setAvatarUrl(p.avatar_url ?? "")
+  }, [])
+
+  const load = useCallback(async () => {
+    setError("")
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      router.replace("/login")
+      return
+    }
+    const res = await apiFetch("/api/profile/me")
+    if (res.status === 401) {
+      router.replace("/login")
+      return
+    }
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}))
+      setError(j.error || "Could not load profile")
+      setLoading(false)
+      return
+    }
+    const j = await res.json()
+    hydrate(j.profile)
+    setAuthEmail(j.authEmail ?? null)
+    setLoading(false)
+  }, [router, hydrate])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setMessage("")
+    setError("")
+    try {
+      const res = await apiFetch("/api/profile/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          first_name,
+          last_name,
+          bio,
+          website,
+          location,
+          avatar_url,
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(j.error || "Save failed")
+        return
+      }
+      hydrate(j.profile)
+      setMessage("Saved")
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const dummyPost = {
-    id: 1,
-    author: { username: dummyUser.username, avatarUrl: dummyUser.avatarUrl },
-    timeAgo: "2 hours ago",
-    content: "Just finished setting up my new Next.js project. Tailwind + Shadcn UI makes it so incredibly fast to build beautiful interfaces! 🚀✨",
-    likes: 42,
-    comments: 5
+  const logout = async () => {
+    setLoggingOut(true)
+    await supabase.auth.signOut()
+    router.replace("/login")
+    router.refresh()
   }
+
+  if (loading || !profile) {
+    return (
+      <div className="py-16 text-center text-muted-foreground text-sm max-w-xl mx-auto px-4">
+        {error || "Loading profile…"}
+      </div>
+    )
+  }
+
+  const display =
+    [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || profile.username
 
   return (
-    <div className="pb-20 md:pb-0 overflow-x-hidden">
-      {/* Cover Photo */}
-      <div className="h-40 md:h-52 bg-gradient-to-tr from-blue-600 via-indigo-500 to-purple-500 w-full object-cover"></div>
-      
-      <div className="px-4 sm:px-6 bg-background border-b pb-6">
-        <div className="relative flex justify-between items-end -mt-16 mb-4">
-          <Avatar className="h-32 w-32 border-4 border-background bg-muted shadow-sm">
-            <AvatarImage src={dummyUser.avatarUrl} className="object-cover" />
-            <AvatarFallback className="text-4xl">{dummyUser.username.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" className="rounded-full h-10 w-10">
-              <Mail className="h-4 w-4" />
-            </Button>
-            <Button className="rounded-full px-6 font-bold h-10">Edit Profile</Button>
+    <div className="pb-24 md:pb-8 max-w-xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+          ← Home
+        </Link>
+        <Button variant="outline" size="sm" className="gap-2" onClick={logout} disabled={loggingOut}>
+          <LogOut className="h-4 w-4" />
+          {loggingOut ? "Signing out…" : "Log out"}
+        </Button>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+        <Avatar className="h-24 w-24 border-4 border-background shadow-md">
+          <AvatarImage src={avatar_url || undefined} className="object-cover" />
+          <AvatarFallback className="text-2xl">{profile.username.charAt(0).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div>
+          <h1 className="text-2xl font-bold">{display}</h1>
+          <p className="text-muted-foreground">@{profile.username}</p>
+          <p className="text-sm text-muted-foreground mt-1">{authEmail ?? profile.email}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-6 text-sm">
+        <span>
+          <span className="font-semibold text-foreground">{profile.following_count}</span>{" "}
+          <span className="text-muted-foreground">Following</span>
+        </span>
+        <span>
+          <span className="font-semibold text-foreground">{profile.follower_count}</span>{" "}
+          <span className="text-muted-foreground">Followers</span>
+        </span>
+        <span>
+          <span className="font-semibold text-foreground">{profile.posts_count}</span>{" "}
+          <span className="text-muted-foreground">Posts</span>
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        {location && (
+          <span className="flex items-center gap-1.5">
+            <MapPin className="h-4 w-4 shrink-0" /> {location}
+          </span>
+        )}
+        {website && (
+          <span className="flex items-center gap-1.5 min-w-0">
+            <LinkIcon className="h-4 w-4 shrink-0" />
+            <a href={website.startsWith("http") ? website : `https://${website}`} className="text-primary truncate hover:underline" target="_blank" rel="noreferrer">
+              {website}
+            </a>
+          </span>
+        )}
+        <span className="flex items-center gap-1.5">
+          <Calendar className="h-4 w-4 shrink-0" /> Joined {new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+        </span>
+      </div>
+
+      <Card className="p-6 space-y-4">
+        <h2 className="font-semibold text-lg">Edit profile</h2>
+        {message && <p className="text-sm text-green-600">{message}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <form onSubmit={save} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="first_name">First name</Label>
+              <Input id="first_name" value={first_name} onChange={(e) => setFirstName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="last_name">Last name</Label>
+              <Input id="last_name" value={last_name} onChange={(e) => setLastName(e.target.value)} />
+            </div>
           </div>
-        </div>
-        
-        <div className="mt-2 text-start">
-          <h1 className="text-2xl font-extrabold">{dummyUser.name}</h1>
-          <p className="text-muted-foreground text-lg">@{dummyUser.username}</p>
-        </div>
-        
-        <p className="mt-4 text-[15px] whitespace-pre-wrap">{dummyUser.bio}</p>
-        
-        <div className="flex flex-wrap gap-y-2 gap-x-4 mt-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {dummyUser.location}</span>
-          <span className="flex items-center gap-1.5"><LinkIcon className="h-4 w-4" /> <a href="#" className="text-blue-500 hover:underline">{dummyUser.website}</a></span>
-          <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" /> Joined {dummyUser.joined}</span>
-        </div>
-        
-        <div className="flex gap-4 mt-5 text-[15px]">
-          <p className="hover:underline cursor-pointer"><span className="font-bold text-foreground">{dummyUser.following}</span> <span className="text-muted-foreground">Following</span></p>
-          <p className="hover:underline cursor-pointer"><span className="font-bold text-foreground">{dummyUser.followers}</span> <span className="text-muted-foreground">Followers</span></p>
-        </div>
-      </div>
-      
-      <div className="mt-2">
-        <div className="flex bg-background border-b overflow-x-auto no-scrollbar">
-          <Button variant="ghost" className="rounded-none border-b-[3px] border-primary h-14 min-w-[100px] flex-1 font-bold text-[15px]">Posts</Button>
-          <Button variant="ghost" className="rounded-none border-b-[3px] border-transparent text-muted-foreground hover:bg-muted/50 h-14 min-w-[100px] flex-1 font-medium text-[15px]">Replies</Button>
-          <Button variant="ghost" className="rounded-none border-b-[3px] border-transparent text-muted-foreground hover:bg-muted/50 h-14 min-w-[100px] flex-1 font-medium text-[15px]">Media</Button>
-          <Button variant="ghost" className="rounded-none border-b-[3px] border-transparent text-muted-foreground hover:bg-muted/50 h-14 min-w-[100px] flex-1 font-medium text-[15px]">Likes</Button>
-        </div>
-        
-        <div className="py-4 sm:px-4 max-w-xl mx-auto">
-          <PostCard post={dummyPost} />
-          <PostCard post={{...dummyPost, id: 2, content: "Another day, another line of code. Consistency is the key to mastering anything.", likes: 112, comments: 16, timeAgo: "1 day ago"}} />
-          <PostCard post={{...dummyPost, id: 3, content: "Look at this amazing sunset!", imageUrl: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=2000&auto=format&fit=crop", likes: 300, comments: 24, timeAgo: "3 days ago"}} />
-        </div>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="avatar_url">Avatar URL</Label>
+            <Input id="avatar_url" type="url" value={avatar_url} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://…" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bio">Bio</Label>
+            <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} rows={3} className="resize-none" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="website">Website</Label>
+            <Input id="website" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="yoursite.com" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} />
+          </div>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </form>
+      </Card>
     </div>
   )
 }

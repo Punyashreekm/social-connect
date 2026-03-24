@@ -5,21 +5,21 @@ import { Home, User, Bell, MessageSquare } from 'lucide-react'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-muted/20 pb-16 md:pb-0 pt-16">
+    <div className="min-h-screen bg-muted/20 pb-16 md:pb-0 pt-14">
       <Navbar />
       <div className="flex max-w-6xl mx-auto md:px-0">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex w-64 flex-col border-r h-[calc(100vh-4rem)] sticky top-16 bg-background">
+        <aside className="hidden md:flex w-64 flex-col border-r h-[calc(100vh-3.5rem)] sticky top-14 bg-background">
           <Sidebar />
         </aside>
         
         {/* Main Content Area */}
-        <main className="flex-1 max-w-2xl mx-auto w-full border-x min-h-[calc(100vh-4rem)] bg-background sm:bg-transparent sm:border-x-0">
+        <main className="flex-1 max-w-2xl mx-auto w-full border-x min-h-[calc(100vh-3.5rem)] bg-background sm:bg-transparent sm:border-x-0">
           {children}
         </main>
         
         {/* Right Sidebar (Optional for later - trending, suggestions) */}
-        <aside className="hidden lg:flex w-80 flex-col p-4 h-[calc(100vh-4rem)] sticky top-16 rounded-xl mt-4 ml-6">
+        <aside className="hidden lg:flex w-80 flex-col p-4 h-[calc(100vh-3.5rem)] sticky top-14 rounded-xl mt-4 ml-6">
           <div className="bg-background rounded-xl border p-4">
             <h2 className="font-bold mb-4 text-lg">Who to follow</h2>
             <div className="space-y-4">
