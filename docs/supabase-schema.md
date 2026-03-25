@@ -293,6 +293,57 @@ create policy "social images delete own"
 
 If Postgres reports **policy already exists**, `drop policy "policy_name" on storage.objects;` first, or pick a new policy name. Prefer renaming the bucket to **`social-images`** (no spaces) in Dashboard and using the same string in env and policies to avoid `%20` in URLs.
 
+### Profile photos (avatars) and the same bucket as posts
+
+The app uploads avatars to **`NEXT_PUBLIC_SUPABASE_POST_IMAGES_BUCKET`** by default (same as post images, e.g. **`social images`**). Path shape is still `{auth.uid()}/{uuid}.jpg|png`, so your existing Storage policies for that bucket already apply—no second bucket required.
+
+Optional: set **`NEXT_PUBLIC_SUPABASE_AVATARS_BUCKET`** only if you want profile images in a different bucket than posts.
+
+Dedicated **`avatars`** bucket (only if you do not share the post bucket):
+
+```sql
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'avatars',
+  'avatars',
+  true,
+  2097152,
+  array['image/jpeg', 'image/png']::text[]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "avatars read"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+create policy "avatars insert own folder"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "avatars update own"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+create policy "avatars delete own"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+```
+
 ---
 
 ## Triggers (recommended)

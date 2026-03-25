@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/supabase-from-request"
+import { isAllowedAvatarPublicUrl } from "@/lib/storage-avatar"
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
@@ -59,6 +60,16 @@ export async function PATCH(request: NextRequest) {
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "No valid fields" }, { status: 400 })
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
+  if (patch.avatar_url != null && patch.avatar_url !== "") {
+    if (!isAllowedAvatarPublicUrl(patch.avatar_url, baseUrl)) {
+      return NextResponse.json(
+        { error: "Avatar URL must be from your configured profile/post storage bucket" },
+        { status: 400 }
+      )
+    }
   }
 
   const { data, error } = await supabase.from("profiles").update(patch).eq("id", user.id).select().single()
