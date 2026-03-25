@@ -24,8 +24,8 @@ export default function Sidebar() {
             </Link>
           </Button>
         ))}
-        <Button className="w-full rounded-full mt-6 h-12 text-lg" size="lg">
-          Post
+        <Button className="w-full rounded-full mt-6 h-12 text-lg" size="lg" asChild>
+          <Link href="/create-post">Create  Post</Link>
         </Button>
       </div>
     </div>

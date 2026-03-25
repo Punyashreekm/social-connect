@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import CreatePost from "@/components/post/CreatePost";
+
 import PostCard, { type FeedPost } from "@/components/post/PostCard";
 import { apiFetch } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
@@ -87,20 +87,7 @@ export default function DashboardFeed() {
           {loadError}
         </p>
       )}
-      <CreatePost
-        userId={userId}
-        me={
-          me
-            ? {
-                first_name: me.first_name,
-                last_name: me.last_name,
-                username: me.username,
-                avatar_url: me.avatar_url,
-              }
-            : null
-        }
-        onPosted={refresh}
-      />
+
       <div className="mt-4">
         {posts.length === 0 && !loadError && (
           <p className="text-center text-muted-foreground text-sm py-8 px-4">
