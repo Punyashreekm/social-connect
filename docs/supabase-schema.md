@@ -498,11 +498,14 @@ create policy "posts_delete_own"
   to authenticated
   using (auth.uid() = author_id);
 
--- likes (feed checks “liked by me”)
-create policy "likes_select_own"
+-- likes: SELECT must allow reading all like rows for posts on the feed so the API can
+-- compute totals (posts.like_count is not updated unless you add DB triggers).
+-- If you created "likes_select_own" earlier, drop it first:
+-- drop policy if exists "likes_select_own" on public.likes;
+create policy "likes_select_authenticated"
   on public.likes for select
   to authenticated
-  using (auth.uid() = user_id);
+  using (true);
 
 create policy "likes_insert_own"
   on public.likes for insert

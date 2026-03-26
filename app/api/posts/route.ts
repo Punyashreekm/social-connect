@@ -52,13 +52,25 @@ export async function GET(request: NextRequest) {
   const postIds = posts.map((p) => p.id)
   const authorIds = [...new Set(posts.map((p) => p.author_id))]
 
+  const likeCountByPost = new Map<string, number>()
   let likedSet = new Set<string>()
-  let followingSet = new Set<string>()
 
   if (postIds.length > 0) {
-    const { data: likes } = await supabase.from("likes").select("post_id").eq("user_id", user.id).in("post_id", postIds)
-    likedSet = new Set((likes ?? []).map((l) => l.post_id as string))
+    const { data: likeRows } = await supabase
+      .from("likes")
+      .select("post_id, user_id")
+      .in("post_id", postIds)
+
+    for (const row of likeRows ?? []) {
+      const pid = row.post_id as string
+      likeCountByPost.set(pid, (likeCountByPost.get(pid) ?? 0) + 1)
+      if (row.user_id === user.id) {
+        likedSet.add(pid)
+      }
+    }
   }
+
+  let followingSet = new Set<string>()
 
   if (authorIds.length > 0) {
     const { data: follows } = await supabase
@@ -82,7 +94,7 @@ export async function GET(request: NextRequest) {
       id: row.id,
       content: row.content,
       image_url: row.image_url,
-      like_count: row.like_count,
+      like_count: likeCountByPost.get(row.id) ?? 0,
       comment_count: row.comment_count,
       created_at: row.created_at,
       author_id: row.author_id,
