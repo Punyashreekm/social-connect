@@ -12,7 +12,8 @@ import {
   UserMinus,
 } from "lucide-react";
 import { formatTimeAgo } from "@/lib/time";
-import { apiFetch } from "@/lib/api-client";
+import Link from "next/link"
+import { apiFetch } from "@/lib/api-client"
 
 export type FeedAuthor = {
   id: string;
@@ -154,8 +155,11 @@ export default function PostCard({
         <Button
           variant="ghost"
           className="flex-1 flex gap-2 rounded-lg hover:text-blue-500 hover:bg-blue-50"
+          asChild
         >
-          <MessageCircle className="h-5 w-5" /> {post.comment_count}
+          <Link href={`/posts/${post.id}`}>
+            <MessageCircle className="h-5 w-5" /> {post.comment_count}
+          </Link>
         </Button>
         <Button
           variant="ghost"

@@ -70,6 +70,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const commentCountByPost = new Map<string, number>()
+  if (postIds.length > 0) {
+    const { data: commentRows } = await supabase.from("comments").select("post_id").in("post_id", postIds)
+    for (const row of commentRows ?? []) {
+      const pid = row.post_id as string
+      commentCountByPost.set(pid, (commentCountByPost.get(pid) ?? 0) + 1)
+    }
+  }
+
   let followingSet = new Set<string>()
 
   if (authorIds.length > 0) {
@@ -95,7 +104,7 @@ export async function GET(request: NextRequest) {
       content: row.content,
       image_url: row.image_url,
       like_count: likeCountByPost.get(row.id) ?? 0,
-      comment_count: row.comment_count,
+      comment_count: commentCountByPost.get(row.id) ?? 0,
       created_at: row.created_at,
       author_id: row.author_id,
       author,

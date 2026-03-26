@@ -532,3 +532,19 @@ create policy "follows_delete_own"
   on public.follows for delete
   to authenticated
   using (auth.uid() = follower_id);
+
+-- comments (list on post thread; counts on feed)
+create policy "comments_select_authenticated"
+  on public.comments for select
+  to authenticated
+  using (true);
+
+create policy "comments_insert_own"
+  on public.comments for insert
+  to authenticated
+  with check (auth.uid() = author_id);
+
+create policy "comments_delete_own"
+  on public.comments for delete
+  to authenticated
+  using (auth.uid() = author_id);
